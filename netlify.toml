@@ -1,0 +1,12 @@
+# Round Table on Netlify (TanStack Start + Nitro `netlify` preset).
+# `vite build` writes static assets to dist/ and the server function to
+# .netlify/functions-internal/server (picked up automatically by Netlify).
+# `npm run build` also applies SQL migrations when DATABASE_URL is set.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_FLAGS = "--no-audit --no-fund"
