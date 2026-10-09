@@ -117,6 +117,19 @@ function SittingInner() {
     onError: (err: Error) => toast.error(err.message),
   });
 
+  // Save "The job" when the field loses focus (it is also saved on Send).
+  const saveJob = useMutation({
+    mutationFn: (prompt: string) =>
+      saveTableMeta({
+        data: { id: tableId, title: data?.table.title ?? "New project", prompt },
+      }),
+    onSuccess: async () => {
+      await refresh();
+      await qc.invalidateQueries({ queryKey: ["tables"] });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
   const speak = useMutation({
     mutationFn: async (text: string) => {
       await saveTableMeta({
@@ -255,6 +268,11 @@ function SittingInner() {
                 placeholder="What is this project, and what does finished look like?"
                 value={projectValue}
                 onChange={(e) => setProject(e.target.value)}
+                onBlur={(e) => {
+                  if (e.target.value !== (data.table.prompt ?? "")) {
+                    saveJob.mutate(e.target.value);
+                  }
+                }}
               />
               <div className="mt-4 rounded-[var(--radius-lg)] border border-border bg-surface p-5">
                 <div className="flex items-center justify-between gap-3">
