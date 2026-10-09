@@ -5,6 +5,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { AuthProvider } from "@/lib/auth/provider";
+import { AnalyticsConsent } from "@/components/analytics-consent";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { QueryProvider } from "@/components/query-provider";
 import { Toaster } from "sonner";
@@ -53,6 +54,7 @@ export const Route = createRootRoute({
             className: "!bg-elevated !text-fg !border-border",
           }}
         />
+        <AnalyticsConsent />
         <Scripts />
       </body>
     </html>
