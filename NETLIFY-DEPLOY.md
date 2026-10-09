@@ -6,7 +6,11 @@ is no shared key.
 
 ## What the build produces
 
-`npm run build` = `vite build` + `npm run db:migrate`.
+`npm run build` = `vite build` + `npm run db:migrate`. On Netlify (`NETLIFY=true`)
+or with `MIGRATE=0`, `db:migrate` is skipped: the platform applies
+`netlify/database/migrations/` itself (a byte-for-byte copy of `migrations/`,
+enforced by `scripts/netlify-migrations-sync.test.mjs` — add new migrations to
+both). Off Netlify (local/CI with `DATABASE_URL`) `scripts/migrate.mjs` still runs.
 
 - `dist/` – static assets (Netlify publish dir, set in `netlify.toml`)
 - `.netlify/functions-internal/server/` – the single SSR/API function
@@ -56,6 +60,19 @@ Any Postgres works. Options:
 
 If neither variable is set in production the app refuses to start rather than
 silently using the in-memory fallback database.
+
+### Netlify Database notes (observed)
+
+- Migrations in `netlify/database/migrations/` are applied by Netlify before a
+  **production** deploy is published (a failure blocks publishing) and on deploy
+  previews. In testing, **CLI draft deploys** (`netlify deploy --build`, with or
+  without `--alias`) created a database branch and uploaded the migrations but did
+  NOT apply them and did not give the function `NETLIFY_DB_URL` (function 500:
+  "DATABASE_URL (or NETLIFY_DB_URL) is not set").
+- `--alias` makes a *branch-deploy* context: it gets none of the
+  `deploy-preview`/`production`-scoped env vars.
+- The app resolves the DB from `DATABASE_URL`, then `NETLIFY_DB_URL` (process env
+  or the `Netlify.env` runtime global) — see `src/lib/db-url.ts`.
 
 ## Deploy
 
