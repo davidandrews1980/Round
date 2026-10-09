@@ -11,7 +11,7 @@ import { getPrefs, markBriefingSeen } from "@/lib/server/prefs";
 import { createTable, deleteTable, listTables } from "@/lib/server/roundtable";
 import { Plus, Trash2 } from "lucide-react";
 
-export const Route = createFileRoute("/roundtable")({
+export const Route = createFileRoute("/roundtable/")({
   component: RoundtableIndex,
 });
 

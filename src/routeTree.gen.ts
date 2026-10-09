@@ -12,7 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as KeysRouteImport } from './routes/keys'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as RoundtableRouteImport } from './routes/roundtable'
+import { Route as RoundtableIndexRouteImport } from './routes/roundtable.index'
 import { Route as RoundtableIdRouteImport } from './routes/roundtable.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
@@ -31,15 +31,15 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RoundtableRoute = RoundtableRouteImport.update({
-  id: '/roundtable',
-  path: '/roundtable',
+const RoundtableIndexRoute = RoundtableIndexRouteImport.update({
+  id: '/roundtable/',
+  path: '/roundtable/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RoundtableIdRoute = RoundtableIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => RoundtableRoute,
+  id: '/roundtable/$id',
+  path: '/roundtable/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
@@ -51,16 +51,16 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/keys': typeof KeysRoute
   '/login': typeof LoginRoute
-  '/roundtable': typeof RoundtableRouteWithChildren
   '/roundtable/$id': typeof RoundtableIdRoute
+  '/roundtable/': typeof RoundtableIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/keys': typeof KeysRoute
   '/login': typeof LoginRoute
-  '/roundtable': typeof RoundtableRouteWithChildren
   '/roundtable/$id': typeof RoundtableIdRoute
+  '/roundtable': typeof RoundtableIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
@@ -68,24 +68,29 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/keys': typeof KeysRoute
   '/login': typeof LoginRoute
-  '/roundtable': typeof RoundtableRouteWithChildren
   '/roundtable/$id': typeof RoundtableIdRoute
+  '/roundtable/': typeof RoundtableIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/keys' | '/login' | '/roundtable' | '/roundtable/$id' | '/api/auth/$'
+    | '/'
+    | '/keys'
+    | '/login'
+    | '/roundtable/$id'
+    | '/roundtable/'
+    | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
   to:
-    '/' | '/keys' | '/login' | '/roundtable' | '/roundtable/$id' | '/api/auth/$'
+    '/' | '/keys' | '/login' | '/roundtable/$id' | '/roundtable' | '/api/auth/$'
   id:
     | '__root__'
     | '/'
     | '/keys'
     | '/login'
-    | '/roundtable'
     | '/roundtable/$id'
+    | '/roundtable/'
     | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
@@ -93,7 +98,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   KeysRoute: typeof KeysRoute
   LoginRoute: typeof LoginRoute
-  RoundtableRoute: typeof RoundtableRouteWithChildren
+  RoundtableIdRoute: typeof RoundtableIdRoute
+  RoundtableIndexRoute: typeof RoundtableIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -120,19 +126,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/roundtable': {
-      id: '/roundtable'
+    '/roundtable/': {
+      id: '/roundtable/'
       path: '/roundtable'
-      fullPath: '/roundtable'
-      preLoaderRoute: typeof RoundtableRouteImport
+      fullPath: '/roundtable/'
+      preLoaderRoute: typeof RoundtableIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/roundtable/$id': {
       id: '/roundtable/$id'
-      path: '/$id'
+      path: '/roundtable/$id'
       fullPath: '/roundtable/$id'
       preLoaderRoute: typeof RoundtableIdRouteImport
-      parentRoute: typeof RoundtableRoute
+      parentRoute: typeof rootRouteImport
     }
     '/api/auth/$': {
       id: '/api/auth/$'
@@ -144,23 +150,12 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface RoundtableRouteChildren {
-  RoundtableIdRoute: typeof RoundtableIdRoute
-}
-
-const RoundtableRouteChildren: RoundtableRouteChildren = {
-  RoundtableIdRoute: RoundtableIdRoute,
-}
-
-const RoundtableRouteWithChildren = RoundtableRoute._addFileChildren(
-  RoundtableRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   KeysRoute: KeysRoute,
   LoginRoute: LoginRoute,
-  RoundtableRoute: RoundtableRouteWithChildren,
+  RoundtableIdRoute: RoundtableIdRoute,
+  RoundtableIndexRoute: RoundtableIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
