@@ -22,6 +22,7 @@ import { getCookie } from "@tanstack/react-start/server";
 import { randomBytes } from "node:crypto";
 import { Pool } from "pg";
 import { ensureDbReady, getPglite } from "../db";
+import { resolveDatabaseUrl } from "../db-url";
 import { emailAndPasswordEnabled } from "./email-password";
 import { pgliteDialect } from "./pglite-dialect";
 
@@ -87,7 +88,7 @@ const trustedOrigins: string[] = explicitBaseURL
   ? [explicitBaseURL, ...LOCAL_ORIGINS]
   : LOCAL_ORIGINS;
 
-const databaseUrl = env("DATABASE_URL") ?? env("NETLIFY_DB_URL");
+const databaseUrl = resolveDatabaseUrl();
 
 // Real Postgres when `DATABASE_URL` is set, else the embedded PGLite (local dev)
 // via a Kysely dialect. Both use the Better Auth schema from migrations/0001_auth.sql.

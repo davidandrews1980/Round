@@ -18,6 +18,19 @@ import { dirname, join } from "node:path";
 import pg from "pg";
 import { pendingMigrations } from "./migration-plan.mjs";
 
+// On Netlify the platform applies netlify/database/migrations/ itself (before a
+// deploy is published); the build's database credentials are not writable, so do
+// not try. MIGRATE=0 skips anywhere; MIGRATE=1 forces it even on Netlify.
+if (
+  process.env.MIGRATE === "0" ||
+  (process.env.NETLIFY === "true" && process.env.MIGRATE !== "1")
+) {
+  console.log(
+    "[migrate] skipped (Netlify applies netlify/database/migrations/ itself; or MIGRATE=0).",
+  );
+  process.exit(0);
+}
+
 // NETLIFY_DB_URL is what Netlify Database injects; DATABASE_URL wins if both are set.
 const databaseUrl = process.env.DATABASE_URL?.trim() || process.env.NETLIFY_DB_URL?.trim();
 if (!databaseUrl) {

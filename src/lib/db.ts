@@ -1,18 +1,13 @@
 import { pendingMigrations } from "../../scripts/migration-plan.mjs";
+import { resolveDatabaseUrl } from "./db-url";
 
 /** Which database backend is active. */
 export type DbSource = "neon" | "pglite";
 
-// An empty/whitespace DATABASE_URL (an easy misconfig in deploy UIs) must mean
-// "unset" — otherwise production would silently run on the PGLite fallback.
-// `NETLIFY_DB_URL` is the variable Netlify Database injects; `DATABASE_URL` (any
-// Postgres, e.g. Neon) wins when both are set.
-const rawDatabaseUrl =
-  typeof process !== "undefined"
-    ? process.env.DATABASE_URL?.trim() || process.env.NETLIFY_DB_URL
-    : undefined;
-const databaseUrl =
-  rawDatabaseUrl && rawDatabaseUrl.trim() ? rawDatabaseUrl : undefined;
+// An empty/whitespace DATABASE_URL must mean "unset" — otherwise production would
+// silently run on the PGLite fallback. `NETLIFY_DB_URL` is the variable Netlify
+// Database injects; `DATABASE_URL` wins when both are set (see ./db-url).
+const databaseUrl = resolveDatabaseUrl();
 
 /**
  * Active backend: real **Neon** when `DATABASE_URL` is set (deployed / configured
