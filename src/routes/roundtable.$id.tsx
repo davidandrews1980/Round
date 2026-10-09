@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell, AuthSkeleton } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { createSaveQueue } from "@/lib/save-queue";
 import { AI_PROVIDERS, providerById } from "@/lib/providers";
 import { listKeys } from "@/lib/server/keys";
 import {
@@ -111,8 +112,18 @@ function SittingInner() {
   );
   const refresh = () => qc.invalidateQueries({ queryKey: ["table", tableId] });
 
+  // Seat saves go through one serialized queue: a single request in flight, newer
+  // snapshots supersede unsent ones, so the last edit always wins and none is
+  // overwritten by an older request landing late.
+  const tableIdRef = useRef(tableId);
+  tableIdRef.current = tableId;
+  const seatQueue = useRef<ReturnType<typeof createSaveQueue<DraftSeat[]>> | null>(null);
+  seatQueue.current ??= createSaveQueue<DraftSeat[]>((next) =>
+    setSeats({ data: { tableId: tableIdRef.current, seats: next } }),
+  );
+
   const persistSeats = useMutation({
-    mutationFn: (next: DraftSeat[]) => setSeats({ data: { tableId, seats: next } }),
+    mutationFn: (next: DraftSeat[]) => seatQueue.current!.enqueue(next),
     onSuccess: refresh,
     onError: (err: Error) => toast.error(err.message),
   });
@@ -135,7 +146,7 @@ function SittingInner() {
       await saveTableMeta({
         data: { id: tableId, title: data?.table.title ?? "New project", prompt: projectValue },
       });
-      await setSeats({ data: { tableId, seats } });
+      await seatQueue.current!.enqueue(seats);
       return talk({ data: { tableId, project: projectValue, message: text, mode } });
     },
     onSuccess: async () => {

@@ -1,5 +1,6 @@
 import { pendingMigrations } from "../../scripts/migration-plan.mjs";
 import { resolveDatabaseUrl } from "./db-url";
+import { createPgSql, toSql, type Run } from "./pg-sql";
 
 /** Which database backend is active. */
 export type DbSource = "neon" | "pglite";
@@ -34,6 +35,13 @@ export interface Sql {
     text: string,
     params?: unknown[],
   ): Promise<T[]>;
+  /**
+   * Run `fn` in a single transaction (BEGIN … COMMIT, ROLLBACK if it throws).
+   * `tx` has the same tagged-template/`.query()` surface but every statement
+   * runs on the one transaction connection. Do not use the outer `sql` inside
+   * `fn` — it would run outside the transaction.
+   */
+  transaction<R>(fn: (tx: Sql) => Promise<R>): Promise<R>;
 }
 
 /**
@@ -66,24 +74,6 @@ const OID_DATE = 1082;
 const OID_INTERVAL = 1186;
 const identity = (v: string) => v;
 
-type Run = <T>(text: string, params: unknown[]) => Promise<T[]>;
-
-/** Wrap a query runner in the tagged-template + `.query()` `Sql` surface. */
-function toSql(run: Run): Sql {
-  const sql = (async <T = Record<string, unknown>>(
-    strings: TemplateStringsArray,
-    ...values: unknown[]
-  ): Promise<T[]> => {
-    // Rebuild with $1, $2, … placeholders so values stay parameterized.
-    let text = strings[0];
-    for (let i = 0; i < values.length; i += 1) text += `$${i + 1}${strings[i + 1]}`;
-    return run<T>(text, values);
-  }) as unknown as Sql;
-  sql.query = <T = Record<string, unknown>>(text: string, params: unknown[] = []) =>
-    run<T>(text, params);
-  return sql;
-}
-
 function createNeonSql(): Promise<Sql> {
   globalRef.__pgSqlPromise__ ??= (async () => {
     // Regular Postgres driver: node-postgres (`pg`) — works directly with Neon's
@@ -92,11 +82,7 @@ function createNeonSql(): Promise<Sql> {
     types.setTypeParser(OID_INT8, Number);
     types.setTypeParser(OID_DATE, identity);
     types.setTypeParser(OID_INTERVAL, identity);
-    const pool = new Pool({ connectionString: databaseUrl });
-    return toSql(async <T>(text: string, params: unknown[]) => {
-      const res = await pool.query(text, params);
-      return res.rows as T[];
-    });
+    return createPgSql(new Pool({ connectionString: databaseUrl }));
   })().catch((err) => {
     globalRef.__pgSqlPromise__ = undefined;
     throw err;
@@ -160,10 +146,15 @@ async function createPgliteSql(): Promise<Sql> {
   globalRef.__pgliteMigrateChain__ = pass;
   await pass;
 
-  return toSql(async <T>(text: string, params: unknown[]) => {
-    const result = await pg.query<T>(text, params);
-    return result.rows;
-  });
+  const runOn =
+    (q: { query: typeof pg.query }): Run =>
+    async <T>(text: string, params: unknown[]) =>
+      (await q.query<T>(text, params)).rows;
+  return toSql(runOn(pg), (fn) =>
+    // PGLite is one connection and serializes its own queries; `transaction`
+    // takes the exclusive lock for the whole callback.
+    pg.transaction((t) => fn(toSql(runOn(t), () => Promise.reject(new Error("Nested transactions are not supported"))))),
+  );
 }
 
 let sqlPromise: Promise<Sql> | null = null;

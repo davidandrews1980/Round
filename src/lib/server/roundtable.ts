@@ -3,6 +3,7 @@ import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import { AI_PROVIDERS } from "@/lib/providers";
 import { callSeatedModel, type SeatCall } from "@/lib/server/call-model";
+import { replaceSeats } from "@/lib/server/seats-store";
 import { loadUserSecrets } from "@/lib/server/keys";
 import { assertMcpUrl, mcpCallTool, mcpListTools } from "@/lib/server/mcp";
 import { parseCastReply } from "@/lib/server/parse-cast";
@@ -273,21 +274,9 @@ export const setSeats = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    const owned = await sql<{ id: number }>`select id from tables where id = ${data.tableId} and user_id = ${context.userId}`;
-    if (!owned[0]) throw new Error("Table not found");
-    await sql`delete from seats where table_id = ${data.tableId} and user_id = ${context.userId}`;
-    for (let i = 0; i < data.seats.length; i++) {
-      const s = data.seats[i];
-      await sql`
-        insert into seats (
-          table_id, user_id, provider_id, role, instruction, job, personality, job_title,
-          caution, creativity, openness, confidence, empathy, directness, sort_order
-        ) values (
-          ${data.tableId}, ${context.userId}, ${s.providerId}, ${"cast"}, ${s.job}, ${s.job}, ${s.personality}, ${s.jobTitle},
-          ${s.caution}, ${s.creativity}, ${s.openness}, ${s.confidence}, ${s.empathy}, ${s.directness}, ${i}
-        )
-      `;
-    }
+    // One transaction, row-locked per table, seats updated in place (see seats-store).
+    const found = await replaceSeats(sql, context.userId, data.tableId, data.seats);
+    if (!found) throw new Error("Table not found");
     return { ok: true as const };
   });
 
