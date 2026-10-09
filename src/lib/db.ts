@@ -5,8 +5,12 @@ export type DbSource = "neon" | "pglite";
 
 // An empty/whitespace DATABASE_URL (an easy misconfig in deploy UIs) must mean
 // "unset" — otherwise production would silently run on the PGLite fallback.
+// `NETLIFY_DB_URL` is the variable Netlify Database injects; `DATABASE_URL` (any
+// Postgres, e.g. Neon) wins when both are set.
 const rawDatabaseUrl =
-  typeof process !== "undefined" ? process.env.DATABASE_URL : undefined;
+  typeof process !== "undefined"
+    ? process.env.DATABASE_URL?.trim() || process.env.NETLIFY_DB_URL
+    : undefined;
 const databaseUrl =
   rawDatabaseUrl && rawDatabaseUrl.trim() ? rawDatabaseUrl : undefined;
 
@@ -176,6 +180,13 @@ async function createSql(): Promise<Sql> {
         "or a server route loader, never from client code.",
     );
   }
+  if (dbSource === "pglite" && process.env.NODE_ENV === "production") {
+    // The embedded DB is in-memory and per-instance: on a serverless host every
+    // cold start would lose all data. Fail loudly instead.
+    throw new Error(
+      "DATABASE_URL (or NETLIFY_DB_URL) is not set — refusing to run production on the in-memory fallback database.",
+    );
+  }
   return dbSource === "neon" ? createNeonSql() : createPgliteSql();
 }
 
@@ -229,7 +240,11 @@ export function ensureDbReady(): Promise<void> {
 const globalBoot = globalThis as typeof globalThis & {
   __pgBootstrapPromise__?: Promise<void>;
 };
-if (typeof window === "undefined" && dbSource === "pglite") {
+if (
+  typeof window === "undefined" &&
+  dbSource === "pglite" &&
+  process.env.NODE_ENV !== "production"
+) {
   globalBoot.__pgBootstrapPromise__ ??= ensureDbReady().catch((err) => {
     globalBoot.__pgBootstrapPromise__ = undefined;
     console.error("[db] PGLite bootstrap failed:", err);

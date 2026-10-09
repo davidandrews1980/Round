@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import { AI_PROVIDERS } from "@/lib/providers";
+import { decryptSecret, encryptSecret } from "@/lib/server/secret-box";
 
 function last4Of(secret: string) {
   const trimmed = secret.trim();
@@ -49,7 +50,7 @@ export const saveKey = createServerFn({ method: "POST" })
     const last4 = last4Of(data.secret);
     await sql`
       insert into api_keys (user_id, provider_id, secret, last4)
-      values (${context.userId}, ${data.providerId}, ${data.secret}, ${last4})
+      values (${context.userId}, ${data.providerId}, ${encryptSecret(data.secret)}, ${last4})
       on conflict (user_id, provider_id)
       do update set secret = excluded.secret, last4 = excluded.last4
     `;
@@ -71,5 +72,11 @@ export async function loadUserSecrets(userId: string) {
     provider_id: string;
     secret: string;
   }>`select provider_id, secret from api_keys where user_id = ${userId}`;
-  return new Map(rows.map((r) => [r.provider_id, r.secret]));
+  const out = new Map<string, string>();
+  for (const r of rows) {
+    // Undecryptable (secret rotated/missing) -> treated as no key for that seat.
+    const plain = decryptSecret(r.secret);
+    if (plain) out.set(r.provider_id, plain);
+  }
+  return out;
 }

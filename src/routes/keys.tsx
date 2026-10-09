@@ -62,7 +62,7 @@ function KeysInner() {
       <h1 className="mt-3 font-display text-4xl tracking-tight">API keys</h1>
       <p className="mt-3 text-sm leading-relaxed text-muted">
         Roundtable calls the providers you seat, with the keys you paste here.
-        We store them on your account and only ever show the last four digits.
+        We store them encrypted on your account and only ever show the last four digits.
         You need a key for each AI you want at the table — not all of them.
       </p>
       <div className="mt-8 space-y-4">
