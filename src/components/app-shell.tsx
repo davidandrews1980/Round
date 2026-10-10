@@ -9,7 +9,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3">
           <Link to="/" className="flex items-center gap-2 text-fg">
-            <Mark className="size-7" />
+            <Mark className="size-9" />
             <span className="font-display text-lg tracking-tight">Roundtable</span>
           </Link>
           <nav className="flex flex-1 gap-4 text-sm text-muted">

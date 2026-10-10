@@ -36,7 +36,7 @@ function Login() {
     <main className="grid min-h-dvh place-items-center px-4 py-12">
       <div className="w-full max-w-sm">
         <Link to="/" className="flex items-center gap-2 text-fg">
-          <Mark className="size-8" />
+          <Mark className="size-12" />
           <span className="font-display text-2xl tracking-tight">
             Roundtable
           </span>
